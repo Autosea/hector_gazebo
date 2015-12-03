@@ -65,6 +65,7 @@ public:
 
 private:
   virtual bool LoadImpl(sdf::ElementPtr _element, T& _value);
+  virtual bool Loaddbl(sdf::ElementPtr _element, double& _value);
 
 public:
   T offset;
@@ -72,6 +73,7 @@ public:
   T drift_frequency;
   T gaussian_noise;
   T scale_error;
+  double update_rate;
 
 private:
   T current_drift_;
@@ -84,6 +86,7 @@ SensorModel_<T>::SensorModel_()
   , drift()
   , drift_frequency()
   , gaussian_noise()
+  , update_rate()
 {
   drift_frequency = 1.0/3600.0; // time constant 1h
   scale_error = 1.0;
@@ -98,7 +101,7 @@ SensorModel_<T>::~SensorModel_()
 template <typename T>
 void SensorModel_<T>::Load(sdf::ElementPtr _sdf, const std::string& prefix)
 {
-  std::string _offset, _drift, _drift_frequency, _gaussian_noise, _scale_error;
+  std::string _offset, _drift, _drift_frequency, _gaussian_noise, _scale_error, _update_rate;
 
   if (prefix.empty()) {
     _offset              = "offset";
@@ -106,12 +109,14 @@ void SensorModel_<T>::Load(sdf::ElementPtr _sdf, const std::string& prefix)
     _drift_frequency     = "driftFrequency";
     _gaussian_noise      = "gaussianNoise";
     _scale_error         = "scaleError";
+    _update_rate         = "updateRate";
   } else {
     _offset              = prefix + "Offset";
     _drift               = prefix + "Drift";
     _drift_frequency     = prefix + "DriftFrequency";
     _gaussian_noise      = prefix + "GaussianNoise";
     _scale_error         = prefix + "ScaleError";
+    _update_rate         = "updateRate"; // The update rate is common across all sensors for now
   }
 
   if (_sdf->HasElement(_offset))              LoadImpl(_sdf->GetElement(_offset), offset);
@@ -119,12 +124,19 @@ void SensorModel_<T>::Load(sdf::ElementPtr _sdf, const std::string& prefix)
   if (_sdf->HasElement(_drift_frequency))     LoadImpl(_sdf->GetElement(_drift_frequency), drift_frequency);
   if (_sdf->HasElement(_gaussian_noise))      LoadImpl(_sdf->GetElement(_gaussian_noise), gaussian_noise);
   if (_sdf->HasElement(_scale_error))         LoadImpl(_sdf->GetElement(_scale_error), scale_error);
+  if (_sdf->HasElement(_update_rate))         Loaddbl(_sdf->GetElement(_update_rate), update_rate);
 
   reset();
 }
 
 template <typename T>
 bool SensorModel_<T>::LoadImpl(sdf::ElementPtr _element, T& _value) {
+  if (!_element->GetValue()) return false;
+  return _element->GetValue()->Get(_value);
+}
+
+template <>
+bool SensorModel_<double>::Loaddbl(sdf::ElementPtr _element, double& _value) {
   if (!_element->GetValue()) return false;
   return _element->GetValue()->Get(_value);
 }
@@ -219,12 +231,14 @@ void SensorModel_<T>::dynamicReconfigureCallback(SensorModelConfig &config, uint
     drift           = config.drift;
     drift_frequency = config.drift_frequency;
     scale_error     = config.scale_error;
+    update_rate     = config.update_rate;
   } else {
     config.gaussian_noise  = helpers::scalar_value<T>::toDouble(gaussian_noise);
     config.offset          = helpers::scalar_value<T>::toDouble(offset);
     config.drift           = helpers::scalar_value<T>::toDouble(drift);
     config.drift_frequency = helpers::scalar_value<T>::toDouble(drift_frequency);
     config.scale_error     = helpers::scalar_value<T>::toDouble(scale_error);
+    config.update_rate     = helpers::scalar_value<double>::toDouble(update_rate);
   }
 }
 
