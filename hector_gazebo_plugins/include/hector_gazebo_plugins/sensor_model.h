@@ -86,7 +86,6 @@ SensorModel_<T>::SensorModel_()
   , drift()
   , drift_frequency()
   , gaussian_noise()
-  , update_rate()
 {
   drift_frequency = 1.0/3600.0; // time constant 1h
   scale_error = 1.0;
@@ -125,7 +124,6 @@ void SensorModel_<T>::Load(sdf::ElementPtr _sdf, const std::string& prefix)
   if (_sdf->HasElement(_gaussian_noise))      LoadImpl(_sdf->GetElement(_gaussian_noise), gaussian_noise);
   if (_sdf->HasElement(_scale_error))         LoadImpl(_sdf->GetElement(_scale_error), scale_error);
   if (_sdf->HasElement(_update_rate))         Loaddbl(_sdf->GetElement(_update_rate), update_rate);
-
   reset();
 }
 
@@ -135,8 +133,8 @@ bool SensorModel_<T>::LoadImpl(sdf::ElementPtr _element, T& _value) {
   return _element->GetValue()->Get(_value);
 }
 
-template <>
-bool SensorModel_<double>::Loaddbl(sdf::ElementPtr _element, double& _value) {
+template <typename T>
+bool SensorModel_<T>::Loaddbl(sdf::ElementPtr _element, double& _value) {
   if (!_element->GetValue()) return false;
   return _element->GetValue()->Get(_value);
 }
